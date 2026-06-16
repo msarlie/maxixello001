@@ -1,0 +1,157 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Management System</title>
+    <!-- Tailwind CSS for modern styling -->
+    <script src="https://tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">🏫 Student Management System</h1>
+        
+        <!-- Registration Form -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">Register New Student</h2>
+            <form id="studentForm" class="grid grid-cols-2 gap-4">
+                <input type="text" id="firstName" placeholder="First Name" required class="border p-2 rounded">
+                <input type="text" id="lastName" placeholder="Last Name" required class="border p-2 rounded">
+                <input type="email" id="email" placeholder="Email Address" required class="border p-2 rounded col-span-2">
+                <input type="text" id="gradeLevel" placeholder="Grade Level (e.g. 10th)" required class="border p-2 rounded col-span-2">
+                <button type="submit" class="bg-blue-600 text-white p-2 rounded font-semibold col-span-2 hover:bg-blue-700 transition">Add Student</button>
+            </form>
+        </div>
+
+        <!-- Students Roster Control (Search Bar added here) -->
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-gray-700">Enrolled Students</h2>
+                <input type="text" id="searchBar" placeholder="🔍 Search by name..." class="border p-2 rounded w-64 text-sm focus:outline-blue-500">
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-200 text-gray-700">
+                            <th class="p-3 border">ID</th>
+                            <th class="p-3 border">Name</th>
+                            <th class="p-3 border">Email</th>
+                            <th class="p-3 border">Grade</th>
+                            <th class="p-3 border text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody">
+                        <!-- Dynamic student rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript to handle connecting with your API -->
+    <script>
+        const API_URL = 'http://localhost:5000/api/students';
+        let allStudents = []; // Store the full list locally for quick filtering
+
+        // Fetch and display existing students from database
+        async function loadStudents() {
+            try {
+                const response = await fetch(API_URL);
+                allStudents = await response.json();
+                renderTable(allStudents);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        // Helper function to render table rows
+        function renderTable(studentsArray) {
+            const tableBody = document.getElementById('studentTableBody');
+            tableBody.innerHTML = ''; // Clear old rows
+
+            if (studentsArray.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">No matching students found</td></tr>`;
+                return;
+            }
+
+            studentsArray.forEach(student => {
+                const row = `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-3 border">${student.id}</td>
+                        <td class="p-3 border font-medium">${student.firstName} ${student.lastName}</td>
+                        <td class="p-3 border">${student.email}</td>
+                        <td class="p-3 border">${student.gradeLevel}</td>
+                        <td class="p-3 border text-center">
+                            <button onclick="deleteStudent(${student.id})" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm font-semibold transition">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.insertAdjacentHTML('beforeend', row);
+            });
+        }
+
+        // Handle form submission to add a student
+        document.getElementById('studentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const newStudent = {
+                firstName: document.getElementById('firstName').value,
+                lastName: document.getElementById('lastName').value,
+                email: document.getElementById('email').value,
+                gradeLevel: document.getElementById('gradeLevel').value
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newStudent)
+                });
+
+                if (response.ok) {
+                    document.getElementById('studentForm').reset(); // Clear inputs
+                    loadStudents(); // Refresh table view
+                }
+            } catch (error) {
+                console.error('Error saving data:', error);
+            }
+        });
+
+        // Live Filtering Logic via Search Bar
+        document.getElementById('searchBar').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filtered = allStudents.filter(student => {
+                const fullName = `${student.firstName} ${student.lastName}`.toLowerCase();
+                return fullName.includes(searchTerm);
+            });
+            renderTable(filtered);
+        });
+
+        // Function to delete a student record
+        async function deleteStudent(id) {
+            if (!confirm('Are you sure you want to remove this student?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    loadStudents(); // Reload list from database
+                } else {
+                    alert('Failed to delete student.');
+                }
+            } catch (error) {
+                console.error('Error deleting student:', error);
+            }
+        }
+
+        // Initialize table on load
+        loadStudents();
+    </script>
+</body>
+</html>
